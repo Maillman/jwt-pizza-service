@@ -8,7 +8,6 @@ beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserAuthToken = registerRes.body.token;
-  console.log(testUserAuthToken);
 });
 
 test("login", async () => {
@@ -23,4 +22,12 @@ test("login", async () => {
     roles: [{ role: "diner" }],
   };
   expect(loginRes.body.user).toMatchObject(user);
+});
+
+test("logout", async () => {
+  const logoutRequest = await request(app)
+    .delete("/api/auth")
+    .send()
+    .set("Authorization", `Bearer ${testUserAuthToken}`)
+    .expect(200);
 });
