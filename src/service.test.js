@@ -23,6 +23,7 @@ const testFranchise = {
 let testFranchiseId;
 
 const testStore = { franchiseId: -1, name: "SF" };
+let testStoreId;
 
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
@@ -85,6 +86,22 @@ describe("franchiseRouter", () => {
       .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
     expect(createdStoreRes.status).toBe(200);
     expect(createdStoreRes.body).toMatchObject(testStore);
+
+    testStoreId = createdStoreRes.body.id;
+  });
+
+  test("delete-store", async () => {
+    if (testStoreId === null) {
+      await request(app)
+        .post(`/api/franchise/${testFranchiseId}/store`)
+        .send(testStore)
+        .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
+    }
+    await request(app)
+      .delete(`/api/franchise/${testFranchiseId}/store/${testStoreId}`)
+      .send(testStore)
+      .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
+      .expect(200);
   });
 });
 
