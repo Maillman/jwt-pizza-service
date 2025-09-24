@@ -8,6 +8,21 @@ let testUserId;
 
 let adminUser;
 let adminUserId;
+let adminToken;
+
+const testFranchisee = {
+  name: "pizza franchisee",
+  email: "reg@test.com",
+  password: "b",
+};
+let testFranchiseeAuthToken;
+let testFranchiseeId;
+const testFranchise = {
+  name: "myNewFranchise",
+};
+let testFranchiseId;
+
+const testStore = { franchiseId: -1, name: "SF" };
 
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
@@ -16,98 +31,133 @@ beforeAll(async () => {
   testUserId = registerRes.body.user.id;
 
   [adminUser, adminUserId] = await createAdminUser();
-});
 
-test("login", async () => {
-  const loginRes = await request(app).put("/api/auth").send(testUser);
-  expect(loginRes.status).toBe(200);
-  expect(loginRes.body.token).toMatch(
-    /^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/
-  );
+  adminToken = await loginUserIfNeeded(adminUser, adminToken);
 
-  compareUsersButStripPassword(loginRes.body.user, testUser);
-});
+  testFranchisee.email =
+    Math.random().toString(36).substring(2, 12) + "@test.com";
+  const registereeRes = await request(app)
+    .post("/api/auth")
+    .send(testFranchisee);
+  testFranchiseeAuthToken = registereeRes.body.token;
+  testFranchiseeId = registereeRes.body.user.id;
 
-test("logout", async () => {
-  testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
-
-  await request(app)
-    .delete("/api/auth")
-    .send()
-    .set("Authorization", `Bearer ${testUserAuthToken}`)
-    .expect(200);
-
-  testUserAuthToken = null;
-});
-
-test("get-user", async () => {
-  //console.log(testUserAuthToken);
-
-  testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
-
-  //console.log(testUserAuthToken);
-
-  const getUserRes = await request(app)
-    .get("/api/user/me")
-    .send()
-    .set("Authorization", `Bearer ${testUserAuthToken}`);
-  expect(getUserRes.status).toBe(200);
-
-  compareUsersButStripPassword(getUserRes.body, testUser);
-});
-
-test("only-update-own-user", async () => {
-  testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
-
-  //Update self
-  testUser.name = "new pizza diner";
-
-  const updateUserRes = await request(app)
-    .put(`/api/user/${testUserId}`)
-    .send(testUser)
-    .set("Authorization", `Bearer ${testUserAuthToken}`);
-  expect(updateUserRes.status).toBe(200);
-
-  compareUsersButStripPassword(updateUserRes.body.user, testUser);
-  expect(updateUserRes.body.user.name).toBe("new pizza diner");
-
-  //Attempt to update another user
-  const badUpdate = adminUser;
-  badUpdate.name = "badName";
-
-  const badUpdateUserRes = await request(app)
-    .put(`/api/user/${adminUserId}`)
-    .send(badUpdate)
-    .set("Authorization", `Bearer ${testUserAuthToken}`);
-  expect(badUpdateUserRes.status).toBe(403);
-});
-
-test("admin-update-any-user", async () => {
-  adminToken = await loginUserIfNeeded(adminUser, null);
-
-  //Update self
-  adminUser.name = "theGreatAdmin";
-
-  let updateUserRes = await request(app)
-    .put(`/api/user/${adminUserId}`)
-    .send(adminUser)
+  testFranchise.name =
+    "Franchise_" + Math.random().toString(36).substring(2, 12);
+  testFranchise.admins = [{ email: testFranchisee.email }];
+  const createdFranchiseRes = await request(app)
+    .post("/api/franchise")
+    .send(testFranchise)
     .set("Authorization", `Bearer ${adminToken}`);
-  expect(updateUserRes.status).toBe(200);
+  testFranchiseId = createdFranchiseRes.body.id;
+});
 
-  compareUsersButStripPassword(updateUserRes.body.user, adminUser);
-  expect(updateUserRes.body.user.name).toBe("theGreatAdmin");
+describe("authRouter", () => {
+  test("login", async () => {
+    const loginRes = await request(app).put("/api/auth").send(testUser);
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.token).toMatch(
+      /^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/
+    );
 
-  //Update another user
-  testUser.name = "New Pizza Diner!";
+    compareUsersButStripPassword(loginRes.body.user, testUser);
+  });
 
-  updateUserRes = await request(app)
-    .put(`/api/user/${testUserId}`)
-    .send(testUser)
-    .set("Authorization", `Bearer ${adminToken}`);
-  expect(updateUserRes.status).toBe(200);
+  test("logout", async () => {
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
 
-  compareUsersButStripPassword(updateUserRes.body.user, testUser);
-  expect(updateUserRes.body.user.name).toBe("New Pizza Diner!");
+    await request(app)
+      .delete("/api/auth")
+      .send()
+      .set("Authorization", `Bearer ${testUserAuthToken}`)
+      .expect(200);
+
+    testUserAuthToken = null;
+  });
+});
+
+describe("franchiseRouter", () => {
+  test("create-store", async () => {
+    testStore.franchiseId = testFranchiseId;
+    const createdStoreRes = await request(app)
+      .post(`/api/franchise/${testFranchiseId}/store`)
+      .send(testStore)
+      .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
+    expect(createdStoreRes.status).toBe(200);
+    expect(createdStoreRes.body).toMatchObject(testStore);
+  });
+});
+
+describe("userRouter", () => {
+  test("get-user", async () => {
+    //console.log(testUserAuthToken);
+
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+
+    //console.log(testUserAuthToken);
+
+    const getUserRes = await request(app)
+      .get("/api/user/me")
+      .send()
+      .set("Authorization", `Bearer ${testUserAuthToken}`);
+    expect(getUserRes.status).toBe(200);
+
+    compareUsersButStripPassword(getUserRes.body, testUser);
+  });
+
+  test("only-update-own-user", async () => {
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+
+    //Update self
+    testUser.name = "new pizza diner";
+
+    const updateUserRes = await request(app)
+      .put(`/api/user/${testUserId}`)
+      .send(testUser)
+      .set("Authorization", `Bearer ${testUserAuthToken}`);
+    expect(updateUserRes.status).toBe(200);
+
+    compareUsersButStripPassword(updateUserRes.body.user, testUser);
+    expect(updateUserRes.body.user.name).toBe("new pizza diner");
+
+    //Attempt to update another user
+    const badUpdate = adminUser;
+    badUpdate.name = "badName";
+
+    const badUpdateUserRes = await request(app)
+      .put(`/api/user/${adminUserId}`)
+      .send(badUpdate)
+      .set("Authorization", `Bearer ${testUserAuthToken}`);
+    expect(badUpdateUserRes.status).toBe(403);
+  });
+
+  test("admin-update-any-user", async () => {
+    adminToken = await loginUserIfNeeded(adminUser, adminToken);
+
+    //Update self
+    adminUser.name = "theGreatAdmin";
+
+    let updateUserRes = await request(app)
+      .put(`/api/user/${adminUserId}`)
+      .send(adminUser)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(updateUserRes.status).toBe(200);
+
+    compareUsersButStripPassword(updateUserRes.body.user, adminUser);
+    expect(updateUserRes.body.user.name).toBe("theGreatAdmin");
+
+    //Update another user
+    testUser.name = "New Pizza Diner!";
+
+    updateUserRes = await request(app)
+      .put(`/api/user/${testUserId}`)
+      .send(testUser)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(updateUserRes.status).toBe(200);
+
+    compareUsersButStripPassword(updateUserRes.body.user, testUser);
+    expect(updateUserRes.body.user.name).toBe("New Pizza Diner!");
+  });
 });
 
 //Helper Functions
