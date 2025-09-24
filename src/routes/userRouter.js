@@ -41,6 +41,8 @@ userRouter.put(
     const { name, email, password } = req.body;
     const userId = Number(req.params.userId);
     const user = req.user;
+    //If you aren't an admin, you can only change your own information
+    //If you are an admin, you can change anyone's information
     if (user.id !== userId && !user.isRole(Role.Admin)) {
       return res.status(403).json({ message: 'unauthorized' });
     }

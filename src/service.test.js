@@ -4,14 +4,18 @@ const { Role, DB } = require("./database/database.js");
 
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
 let testUserAuthToken;
+let testUserId;
+
 let adminUser;
+let adminUserId;
 
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserAuthToken = registerRes.body.token;
+  testUserId = registerRes.body.user.id;
 
-  adminUser = await createAdminUser();
+  [adminUser, adminUserId] = await createAdminUser();
 });
 
 test("login", async () => {
@@ -21,7 +25,7 @@ test("login", async () => {
     /^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/
   );
 
-  expectResponseUserToMatchTestUser(loginRes.body.user);
+  compareUsersButStripPassword(loginRes.body.user, testUser);
 });
 
 test("logout", async () => {
@@ -36,7 +40,7 @@ test("logout", async () => {
   testUserAuthToken = null;
 });
 
-test("getuser", async () => {
+test("get-user", async () => {
   //console.log(testUserAuthToken);
 
   testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
@@ -49,7 +53,61 @@ test("getuser", async () => {
     .set("Authorization", `Bearer ${testUserAuthToken}`);
   expect(getUserRes.status).toBe(200);
 
-  expectResponseUserToMatchTestUser(getUserRes.body);
+  compareUsersButStripPassword(getUserRes.body, testUser);
+});
+
+test("only-update-own-user", async () => {
+  testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+
+  //Update self
+  testUser.name = "new pizza diner";
+
+  const updateUserRes = await request(app)
+    .put(`/api/user/${testUserId}`)
+    .send(testUser)
+    .set("Authorization", `Bearer ${testUserAuthToken}`);
+  expect(updateUserRes.status).toBe(200);
+
+  compareUsersButStripPassword(updateUserRes.body.user, testUser);
+  expect(updateUserRes.body.user.name).toBe("new pizza diner");
+
+  //Attempt to update another user
+  const badUpdate = adminUser;
+  badUpdate.name = "badName";
+
+  const badUpdateUserRes = await request(app)
+    .put(`/api/user/${adminUserId}`)
+    .send(badUpdate)
+    .set("Authorization", `Bearer ${testUserAuthToken}`);
+  expect(badUpdateUserRes.status).toBe(403);
+});
+
+test("admin-update-any-user", async () => {
+  adminToken = await loginUserIfNeeded(adminUser, null);
+
+  //Update self
+  adminUser.name = "theGreatAdmin";
+
+  let updateUserRes = await request(app)
+    .put(`/api/user/${adminUserId}`)
+    .send(adminUser)
+    .set("Authorization", `Bearer ${adminToken}`);
+  expect(updateUserRes.status).toBe(200);
+
+  compareUsersButStripPassword(updateUserRes.body.user, adminUser);
+  expect(updateUserRes.body.user.name).toBe("theGreatAdmin");
+
+  //Update another user
+  testUser.name = "New Pizza Diner!";
+
+  updateUserRes = await request(app)
+    .put(`/api/user/${testUserId}`)
+    .send(testUser)
+    .set("Authorization", `Bearer ${adminToken}`);
+  expect(updateUserRes.status).toBe(200);
+
+  compareUsersButStripPassword(updateUserRes.body.user, testUser);
+  expect(updateUserRes.body.user.name).toBe("New Pizza Diner!");
 });
 
 //Helper Functions
@@ -65,12 +123,15 @@ async function loginUserIfNeeded(user, token) {
   return token;
 }
 
-function expectResponseUserToMatchTestUser(resUser) {
+function compareUsersButStripPassword(userWithoutPassword, userWithPassword) {
   const { password: _password, ...user } = {
-    ...testUser,
-    roles: [{ role: "diner" }],
+    ...userWithPassword,
+    roles:
+      userWithPassword.roles === undefined
+        ? [{ role: "diner" }]
+        : userWithPassword.roles,
   };
-  expect(resUser).toMatchObject(user);
+  expect(userWithoutPassword).toMatchObject(user);
 }
 
 async function createAdminUser() {
@@ -81,5 +142,7 @@ async function createAdminUser() {
   await DB.addUser(user);
   user.password = "toomanysecrets";
 
-  return user;
+  let { id } = await DB.getUser(user.email, user.password);
+
+  return [user, id];
 }
