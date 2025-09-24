@@ -77,43 +77,54 @@ describe("authRouter", () => {
   });
 });
 
-describe("franchiseRouter", () => {
-  test("create-store", async () => {
-    testStore.franchiseId = testFranchiseId;
-    const createdStoreRes = await request(app)
+//describe("franchiseRouter", () => {
+test("create-store", async () => {
+  testStore.franchiseId = testFranchiseId;
+  const createdStoreRes = await request(app)
+    .post(`/api/franchise/${testFranchiseId}/store`)
+    .send(testStore)
+    .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
+  expect(createdStoreRes.status).toBe(200);
+  expect(createdStoreRes.body).toMatchObject(testStore);
+
+  testStoreId = createdStoreRes.body.id;
+});
+
+test("delete-store", async () => {
+  if (testStoreId === null) {
+    await request(app)
       .post(`/api/franchise/${testFranchiseId}/store`)
       .send(testStore)
       .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
-    expect(createdStoreRes.status).toBe(200);
-    expect(createdStoreRes.body).toMatchObject(testStore);
-
-    testStoreId = createdStoreRes.body.id;
-  });
-
-  test("delete-store", async () => {
-    if (testStoreId === null) {
-      await request(app)
-        .post(`/api/franchise/${testFranchiseId}/store`)
-        .send(testStore)
-        .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
-    }
-    await request(app)
-      .delete(`/api/franchise/${testFranchiseId}/store/${testStoreId}`)
-      .send(testStore)
-      .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
-      .expect(200);
-  });
-
-  test("get-franchises", async () => {
-    const getFranchisesRes = await request(app)
-      .get("/api/franchise")
-      .send()
-      .expect(200);
-    const listOfFranchises = getFranchisesRes.body.franchises;
-    //console.log(listOfFranchises);
-    expect(listOfFranchises.length).toBeGreaterThan(0);
-  });
+  }
+  await request(app)
+    .delete(`/api/franchise/${testFranchiseId}/store/${testStoreId}`)
+    .send(testStore)
+    .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
+    .expect(200);
 });
+
+test("get-franchises", async () => {
+  const getFranchisesRes = await request(app)
+    .get("/api/franchise")
+    .send()
+    .expect(200);
+  const listOfFranchises = getFranchisesRes.body.franchises;
+  //console.log(listOfFranchises);
+  expect(listOfFranchises.length).toBeGreaterThan(0);
+});
+
+test("get-user-franchises", async () => {
+  const getFranchisesRes = await request(app)
+    .get(`/api/franchise/${testFranchiseeId}`)
+    .send()
+    .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
+    .expect(200);
+  const listOfFranchises = getFranchisesRes.body;
+  //console.log(listOfFranchises);
+  expect(listOfFranchises.length).toBeGreaterThan(0);
+});
+//});
 
 describe("userRouter", () => {
   test("get-user", async () => {
