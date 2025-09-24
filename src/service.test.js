@@ -103,6 +103,16 @@ describe("franchiseRouter", () => {
       .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
       .expect(200);
   });
+
+  test("get-franchises", async () => {
+    const getFranchisesRes = await request(app)
+      .get("/api/franchise")
+      .send()
+      .expect(200);
+    const listOfFranchises = getFranchisesRes.body.franchises;
+    //console.log(listOfFranchises);
+    expect(listOfFranchises.length).toBeGreaterThan(0);
+  });
 });
 
 describe("userRouter", () => {
