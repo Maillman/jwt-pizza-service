@@ -25,7 +25,7 @@ test("login", async () => {
 });
 
 test("logout", async () => {
-  const logoutRequest = await request(app)
+  await request(app)
     .delete("/api/auth")
     .send()
     .set("Authorization", `Bearer ${testUserAuthToken}`)
