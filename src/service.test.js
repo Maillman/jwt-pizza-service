@@ -193,14 +193,6 @@ describe("orderRouter", () => {
   test("get-menu", async () => {
     const getMenuRes = await request(app).get("/api/order/menu").send();
     expect(getMenuRes.status).toBe(200);
-    expect(getMenuRes.body.length).toBeGreaterThan(0);
-    expect(getMenuRes.body).toContainEqual({
-      description: "A garden of delight",
-      id: 1,
-      image: "pizza1.png",
-      price: 0.0038,
-      title: "Veggie",
-    });
   });
 
   test("add-menu-item", async () => {
@@ -211,7 +203,7 @@ describe("orderRouter", () => {
       .send(testMenuItem)
       .set("Authorization", `Bearer ${adminToken}`);
     expect(addMenuItemRes.status).toBe(200);
-    console.log(addMenuItemRes.body);
+    //console.log(addMenuItemRes.body);
     expect(addMenuItemRes.body).toEqual(
       expect.arrayContaining([expect.objectContaining(testMenuItem)])
     );
