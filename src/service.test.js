@@ -72,6 +72,19 @@ afterAll(async () => {
     .set("Authorization", `Bearer ${adminToken}`);
 });
 
+test("default-endpoint", async () => {
+  const defaultRes = await request(app).get("/").send();
+  expect(defaultRes.status).toBe(200);
+  expect(defaultRes.body.message).toBe("welcome to JWT Pizza");
+  expect(defaultRes.body).toHaveProperty("version");
+});
+
+test("unknown-endpoint", async () => {
+  const notFoundRes = await request(app).post("/trash").send();
+  expect(notFoundRes.status).toBe(404);
+  expect(notFoundRes.body.message).toBe("unknown endpoint");
+});
+
 describe("authRouter", () => {
   test("login", async () => {
     const loginRes = await request(app).put("/api/auth").send(testUser);
