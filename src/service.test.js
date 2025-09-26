@@ -29,6 +29,14 @@ let testFranchiseId;
 const testStore = { franchiseId: -1, name: "SF" };
 let testStoreId;
 
+const testMenuItem = {
+  title: "Echidna's Tea",
+  description: "It may or may not contain body fluids",
+  image: "tea.png",
+  price: 10,
+};
+let testMenuItemId;
+
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
@@ -57,6 +65,13 @@ beforeAll(async () => {
   testFranchiseId = createdFranchiseRes.body.id;
 });
 
+afterAll(async () => {
+  await request(app)
+    .delete(`/api/franchise/${testFranchiseId}`)
+    .send()
+    .set("Authorization", `Bearer ${adminToken}`);
+});
+
 describe("authRouter", () => {
   test("login", async () => {
     const loginRes = await request(app).put("/api/auth").send(testUser);
@@ -81,54 +96,121 @@ describe("authRouter", () => {
   });
 });
 
-//describe("franchiseRouter", () => {
-test("create-store", async () => {
-  testStore.franchiseId = testFranchiseId;
-  const createdStoreRes = await request(app)
-    .post(`/api/franchise/${testFranchiseId}/store`)
-    .send(testStore)
-    .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
-  expect(createdStoreRes.status).toBe(200);
-  expect(createdStoreRes.body).toMatchObject(testStore);
-
-  testStoreId = createdStoreRes.body.id;
-});
-
-test("delete-store", async () => {
-  if (testStoreId === null) {
-    await request(app)
+describe("franchiseRouter", () => {
+  test("create-store", async () => {
+    testStore.franchiseId = testFranchiseId;
+    const createdStoreRes = await request(app)
       .post(`/api/franchise/${testFranchiseId}/store`)
       .send(testStore)
       .set("Authorization", `Bearer ${testFranchiseeAuthToken}`);
-  }
-  await request(app)
-    .delete(`/api/franchise/${testFranchiseId}/store/${testStoreId}`)
-    .send(testStore)
-    .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
-    .expect(200);
+    expect(createdStoreRes.status).toBe(200);
+    expect(createdStoreRes.body).toMatchObject(testStore);
+
+    testStoreId = createdStoreRes.body.id;
+  });
+
+  test("delete-store", async () => {
+    testStoreId = await createStoreIfNeeded(
+      testFranchiseId,
+      testFranchiseeAuthToken,
+      testStore,
+      testStoreId
+    );
+    await request(app)
+      .delete(`/api/franchise/${testFranchiseId}/store/${testStoreId}`)
+      .send(testStore)
+      .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
+      .expect(200);
+  });
+
+  test("get-franchises", async () => {
+    const getFranchisesRes = await request(app)
+      .get("/api/franchise")
+      .send()
+      .expect(200);
+    const listOfFranchises = getFranchisesRes.body.franchises;
+    //console.log(listOfFranchises);
+    expect(listOfFranchises.length).toBeGreaterThan(0);
+  });
+
+  test("get-user-franchises", async () => {
+    const getFranchisesRes = await request(app)
+      .get(`/api/franchise/${testFranchiseeId}`)
+      .send()
+      .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
+      .expect(200);
+    const listOfFranchises = getFranchisesRes.body;
+    //console.log(listOfFranchises);
+    expect(listOfFranchises.length).toBeGreaterThan(0);
+  });
 });
 
-test("get-franchises", async () => {
-  const getFranchisesRes = await request(app)
-    .get("/api/franchise")
-    .send()
-    .expect(200);
-  const listOfFranchises = getFranchisesRes.body.franchises;
-  //console.log(listOfFranchises);
-  expect(listOfFranchises.length).toBeGreaterThan(0);
-});
+describe("orderRouter", () => {
+  test("get-menu", async () => {
+    const getMenuRes = await request(app).get("/api/order/menu").send();
+    expect(getMenuRes.status).toBe(200);
+    expect(getMenuRes.body.length).toBeGreaterThan(0);
+    expect(getMenuRes.body).toContainEqual({
+      description: "A garden of delight",
+      id: 1,
+      image: "pizza1.png",
+      price: 0.0038,
+      title: "Veggie",
+    });
+  });
 
-test("get-user-franchises", async () => {
-  const getFranchisesRes = await request(app)
-    .get(`/api/franchise/${testFranchiseeId}`)
-    .send()
-    .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
-    .expect(200);
-  const listOfFranchises = getFranchisesRes.body;
-  //console.log(listOfFranchises);
-  expect(listOfFranchises.length).toBeGreaterThan(0);
+  test("add-menu-item", async () => {
+    adminToken = await loginUserIfNeeded(adminUser, adminToken);
+
+    const addMenuItemRes = await request(app)
+      .put("/api/order/menu")
+      .send(testMenuItem)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(addMenuItemRes.status).toBe(200);
+    console.log(addMenuItemRes.body);
+    expect(addMenuItemRes.body).toEqual(
+      expect.arrayContaining([expect.objectContaining(testMenuItem)])
+    );
+  });
+
+  test("create-order", async () => {
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+    testStoreId = await createStoreIfNeeded(
+      testFranchiseId,
+      testFranchiseeAuthToken,
+      testStore,
+      testStoreId
+    );
+
+    const order = {
+      franchiseId: testFranchiseId,
+      storeId: testStoreId,
+      items: [{ menuId: 1, description: "Veggie", price: 0.05 }],
+    };
+
+    const createOrderRes = await request(app)
+      .post("/api/order")
+      .send(order)
+      .set("Authorization", `Bearer ${testUserAuthToken}`);
+    expect(createOrderRes.status).toBe(200);
+    expect(createOrderRes.body.order).toMatchObject(order);
+    expect(createOrderRes.body.jwt).toMatch(
+      /^[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+$/
+    );
+  });
+
+  test("get-orders", async () => {
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+
+    const getOrdersRes = await request(app)
+      .get("/api/order")
+      .send()
+      .set("Authorization", `Bearer ${testUserAuthToken}`);
+    expect(getOrdersRes.status).toBe(200);
+    expect(getOrdersRes.body).toHaveProperty("dinerId");
+    expect(getOrdersRes.body).toHaveProperty("orders");
+  });
 });
-//});
 
 describe("userRouter", () => {
   test("get-user", async () => {
@@ -213,6 +295,21 @@ async function loginUserIfNeeded(user, token) {
     return loginRes.body.token;
   }
   return token;
+}
+
+async function createStoreIfNeeded(
+  franchiseId,
+  franchiseeAuthToken,
+  store,
+  storeId
+) {
+  if (storeId == null) {
+    await request(app)
+      .post(`/api/franchise/${franchiseId}/store`)
+      .send(store)
+      .set("Authorization", `Bearer ${franchiseeAuthToken}`);
+  }
+  return storeId;
 }
 
 function compareUsersButStripPassword(userWithoutPassword, userWithPassword) {
