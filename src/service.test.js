@@ -96,6 +96,13 @@ describe("authRouter", () => {
     compareUsersButStripPassword(loginRes.body.user, testUser);
   });
 
+  test("bad-login", async () => {
+    const badUser = { ...testUser };
+    badUser.password = "BadPassword";
+    const badLoginRes = await request(app).put("/api/auth").send(badUser);
+    expect(badLoginRes.status).toBe(404);
+  });
+
   test("logout", async () => {
     testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
 
@@ -155,6 +162,31 @@ describe("franchiseRouter", () => {
     const listOfFranchises = getFranchisesRes.body;
     //console.log(listOfFranchises);
     expect(listOfFranchises.length).toBeGreaterThan(0);
+  });
+
+  test("forbidden-requests", async () => {
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+
+    //Creating a franchise
+    await request(app)
+      .post("/api/franchise")
+      .send(testFranchise)
+      .set("Authorization", `Bearer ${testUserAuthToken}`)
+      .expect(403);
+
+    //Creating a store
+    await request(app)
+      .post(`/api/franchise/${testFranchiseId}/store`)
+      .send(testStore)
+      .set("Authorization", `Bearer ${testUserAuthToken}`)
+      .expect(403);
+
+    //Deleting a store
+    await request(app)
+      .delete(`/api/franchise/${testFranchiseId}/store/${testStoreId}`)
+      .send(testStore)
+      .set("Authorization", `Bearer ${testUserAuthToken}`)
+      .expect(403);
   });
 });
 
