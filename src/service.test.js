@@ -35,7 +35,6 @@ const testMenuItem = {
   image: "tea.png",
   price: 10,
 };
-let testMenuItemId;
 
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
