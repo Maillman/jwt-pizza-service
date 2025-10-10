@@ -67,19 +67,18 @@ beforeAll(async () => {
 afterAll(async () => {
   await request(app)
     .delete(`/api/franchise/${testFranchiseId}`)
-    .send()
     .set("Authorization", `Bearer ${adminToken}`);
 });
 
 test("default-endpoint", async () => {
-  const defaultRes = await request(app).get("/").send();
+  const defaultRes = await request(app).get("/");
   expect(defaultRes.status).toBe(200);
   expect(defaultRes.body.message).toBe("welcome to JWT Pizza");
   expect(defaultRes.body).toHaveProperty("version");
 });
 
 test("unknown-endpoint", async () => {
-  const notFoundRes = await request(app).post("/trash").send();
+  const notFoundRes = await request(app).post("/trash");
   expect(notFoundRes.status).toBe(404);
   expect(notFoundRes.body.message).toBe("unknown endpoint");
 });
@@ -107,7 +106,6 @@ describe("authRouter", () => {
 
     await request(app)
       .delete("/api/auth")
-      .send()
       .set("Authorization", `Bearer ${testUserAuthToken}`)
       .expect(200);
 
@@ -145,7 +143,6 @@ describe("franchiseRouter", () => {
   test("get-franchises", async () => {
     const getFranchisesRes = await request(app)
       .get("/api/franchise")
-      .send()
       .expect(200);
     const listOfFranchises = getFranchisesRes.body.franchises;
     //console.log(listOfFranchises);
@@ -155,7 +152,6 @@ describe("franchiseRouter", () => {
   test("get-user-franchises", async () => {
     const getFranchisesRes = await request(app)
       .get(`/api/franchise/${testFranchiseeId}`)
-      .send()
       .set("Authorization", `Bearer ${testFranchiseeAuthToken}`)
       .expect(200);
     const listOfFranchises = getFranchisesRes.body;
@@ -191,7 +187,7 @@ describe("franchiseRouter", () => {
 
 describe("orderRouter", () => {
   test("get-menu", async () => {
-    const getMenuRes = await request(app).get("/api/order/menu").send();
+    const getMenuRes = await request(app).get("/api/order/menu");
     expect(getMenuRes.status).toBe(200);
   });
 
@@ -240,7 +236,6 @@ describe("orderRouter", () => {
 
     const getOrdersRes = await request(app)
       .get("/api/order")
-      .send()
       .set("Authorization", `Bearer ${testUserAuthToken}`);
     expect(getOrdersRes.status).toBe(200);
     expect(getOrdersRes.body).toHaveProperty("dinerId");
@@ -258,7 +253,6 @@ describe("userRouter", () => {
 
     const getUserRes = await request(app)
       .get("/api/user/me")
-      .send()
       .set("Authorization", `Bearer ${testUserAuthToken}`);
     expect(getUserRes.status).toBe(200);
 
@@ -318,6 +312,20 @@ describe("userRouter", () => {
     compareUsersButStripPassword(updateUserRes.body.user, testUser);
     expect(updateUserRes.body.user.name).toBe("New Pizza Diner!");
   });
+});
+
+test("list-users-unauthorized", async () => {
+  const listUsersRes = await request(app).get("/api/user");
+  expect(listUsersRes.status).toBe(401);
+});
+
+test("list-users", async () => {
+  testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+
+  const listUsersRes = await request(app)
+    .get("/api/user")
+    .set("Authorization", `Bearer ${testUserAuthToken}`);
+  expect(listUsersRes.status).toBe(200);
 });
 
 //Helper Functions
