@@ -312,20 +312,23 @@ describe("userRouter", () => {
     compareUsersButStripPassword(updateUserRes.body.user, testUser);
     expect(updateUserRes.body.user.name).toBe("New Pizza Diner!");
   });
-});
 
-test("list-users-unauthorized", async () => {
-  const listUsersRes = await request(app).get("/api/user");
-  expect(listUsersRes.status).toBe(401);
-});
+  test("list-users-unauthorized", async () => {
+    const listUsersRes = await request(app).get("/api/user");
+    expect(listUsersRes.status).toBe(401);
+  });
 
-test("list-users", async () => {
-  testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+  test("list-users", async () => {
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
 
-  const listUsersRes = await request(app)
-    .get("/api/user")
-    .set("Authorization", `Bearer ${testUserAuthToken}`);
-  expect(listUsersRes.status).toBe(200);
+    const listUsersRes = await request(app)
+      .get("/api/user")
+      .set("Authorization", `Bearer ${testUserAuthToken}`);
+    expect(listUsersRes.status).toBe(200);
+
+    const listOfUsers = listUsersRes.body.users;
+    expect(listOfUsers.length).toBeGreaterThan(0);
+  });
 });
 
 //Helper Functions
