@@ -205,6 +205,17 @@ describe("orderRouter", () => {
     );
   });
 
+  test("add-menu-item-forbidden", async () => {
+    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+
+    //Adding a menu item
+    await request(app)
+      .put("/api/order/menu")
+      .send(testMenuItem)
+      .set("Authorization", `Bearer ${testUserAuthToken}`)
+      .expect(403);
+  });
+
   test("create-order", async () => {
     testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
     testStoreId = await createStoreIfNeeded(
@@ -328,6 +339,30 @@ describe("userRouter", () => {
 
     const listOfUsers = listUsersRes.body.users;
     expect(listOfUsers.length).toBeGreaterThan(0);
+  });
+
+  test("delete-user-unauthorized", async () => {
+    const deleteUserRes = await request(app).delete(`/api/user/${testUserId}`);
+    expect(deleteUserRes.status).toBe(401);
+  });
+
+  test("delete-user", async () => {
+    adminToken = await loginUserIfNeeded(adminUser, adminToken);
+
+    //Delete self
+    const deleteUserRes = await request(app)
+      .delete(`/api/user/${testUserId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(deleteUserRes.status).toBe(200);
+
+    //Attempt to login
+    const loginRes = await request(app).put("/api/auth").send(testUser);
+    expect(loginRes.status).toBe(404);
+
+    //Reset testUser
+    const registerRes = await request(app).post("/api/auth").send(testUser);
+    testUserAuthToken = registerRes.body.token;
+    testUserId = registerRes.body.user.id;
   });
 });
 
