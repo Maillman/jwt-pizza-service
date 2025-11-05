@@ -6,6 +6,10 @@ let activeUsers = 0;
 let authSuccess = 0;
 let authFailure = 0;
 let latencyMetrics = [];
+let pizzaSuccess = 0;
+let pizzaFailure = 0;
+let pizzaLatencyMetrics = [];
+let revenue = 0;
 
 function getCpuUsagePercentage() {
   const cpuUsage = os.loadavg()[0] / os.cpus().length;
@@ -60,9 +64,15 @@ function trackLatency(req, res, next) {
   next();
 }
 
-// function pizzaPurchase(isSuccess, latency, price) {
-
-// }
+function pizzaPurchase(isSuccess, latency, price) {
+  pizzaLatencyMetrics.push(createMetric("pizza_latency", latency, "ms", "gauge", "asInt"));
+  if(isSuccess) {
+    revenue += price;
+    pizzaSuccess += 1;
+  } else {
+    pizzaFailure += 1;
+  }
+}
 
 setInterval(() => {
   const metrics = [];
@@ -88,6 +98,14 @@ setInterval(() => {
 
   metrics.push(...latencyMetrics);
   latencyMetrics = [];
+
+  metrics.push(...pizzaLatencyMetrics);
+  pizzaLatencyMetrics = [];
+
+  metrics.push(createMetric("pizza_success", pizzaSuccess, "1", "gauge", "asInt"));
+  metrics.push(createMetric("pizza_failure", pizzaFailure, "1", "gauge", "asInt"));
+
+  metrics.push(createMetric("revenue", revenue, "1", "sum", "asDouble"));
 
   sendMetricToGrafana(metrics);
 }, 1000);
