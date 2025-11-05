@@ -118,7 +118,7 @@ function createMetric(
   valueType,
   attributes
 ) {
-  attributes = { ...attributes, source: config.source };
+  attributes = { ...attributes, source: config.metrics.source };
 
   const metric = {
     name: metricName,
@@ -154,6 +154,14 @@ function sendMetricToGrafana(metrics) {
   const metric = {
     resourceMetrics: [
       {
+        resource: {
+          attributes: [
+            {
+              key: "source",
+              value: { stringValue: config.metrics.source },
+            },
+          ]
+        },
         scopeMetrics: [
           {
             metrics,
