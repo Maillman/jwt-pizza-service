@@ -3,7 +3,7 @@ const config = require("./config");
 
 let requests = {};
 let activeUsers = 0;
-// let latency = 0;
+let latencyMetrics = [];
 
 function getCpuUsagePercentage() {
   const cpuUsage = os.loadavg()[0] / os.cpus().length;
@@ -45,11 +45,12 @@ function setActiveUsers(req, res, next) {
 
 // Middleware to track latency
 function trackLatency(req, res, next) {
-  const startUnixNano = Date.now() * 1000000;
+  const startUnixMilli = Date.now();
   res.on("finish", () => {
-    const endUnixNano = Date.now() * 1000000;
-    const duration = endUnixNano - startUnixNano;
+    const endUnixMilli = Date.now();
+    const duration = endUnixMilli - startUnixMilli;
     // console.log("Duration: ", duration);
+    latencyMetrics.push(createMetric("latency", duration, "ms", "gauge", "asInt"));
   });
   next();
 }
@@ -69,6 +70,8 @@ setInterval(() => {
     );
   });
 
+  metrics.push(createMetric("active_users", activeUsers, "1", "gauge", "asInt"));
+
   const cpuValue = getCpuUsagePercentage();
   //   console.log(cpuValue);
   metrics.push(createMetric("cpu", cpuValue, "%", "gauge", "asDouble"));
@@ -77,8 +80,8 @@ setInterval(() => {
   //   console.log(memoryValue);
   metrics.push(createMetric("memory", memoryValue, "%", "gauge", "asDouble"));
 
-  //   latency += Math.floor(Math.random() * 200) + 1;
-  //   sendMetricToGrafana("latency", latency, "sum", "ms");
+  metrics.push(...latencyMetrics);
+  latencyMetrics = [];
 
   sendMetricToGrafana(metrics);
 }, 1000);
