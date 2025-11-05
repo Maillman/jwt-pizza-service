@@ -1,5 +1,6 @@
 const request = require("supertest");
 const app = require("./service");
+const metrics = require("./metrics");
 const { Role, DB } = require("./database/database.js");
 
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
@@ -37,6 +38,7 @@ const testMenuItem = {
 };
 
 beforeAll(async () => {
+  metrics.startMetricsCollection();
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserAuthToken = registerRes.body.token;
@@ -68,6 +70,7 @@ afterAll(async () => {
   await request(app)
     .delete(`/api/franchise/${testFranchiseId}`)
     .set("Authorization", `Bearer ${adminToken}`);
+  metrics.stopMetricsCollection();
 });
 
 test("default-endpoint", async () => {

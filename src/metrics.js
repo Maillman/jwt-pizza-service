@@ -1,6 +1,8 @@
 const os = require("os");
 const config = require("./config");
 
+let intervalId;
+
 let requests = {};
 let activeUsers = 0;
 let authSuccess = 0;
@@ -74,41 +76,52 @@ function pizzaPurchase(isSuccess, latency, price) {
   }
 }
 
-setInterval(() => {
-  const metrics = [];
+function startMetricsCollection() {
+  if(!intervalId){
+    intervalId = setInterval(() => {
+      const metrics = [];
 
-  Object.keys(requests).forEach((endpoint) => {
-    metrics.push(
-      createMetric("requests", requests[endpoint], "1", "sum", "asInt", {
-        endpoint,
-      })
-    );
-  });
+      Object.keys(requests).forEach((endpoint) => {
+        metrics.push(
+          createMetric("requests", requests[endpoint], "1", "sum", "asInt", {
+            endpoint,
+          })
+        );
+      });
 
-  metrics.push(createMetric("active_users", activeUsers, "1", "gauge", "asInt"));
+      metrics.push(createMetric("active_users", activeUsers, "1", "gauge", "asInt"));
 
-  metrics.push(createMetric("auth_success", authSuccess, "1", "gauge", "asInt"));
-  metrics.push(createMetric("auth_failure", authFailure, "1", "gauge", "asInt"));
+      metrics.push(createMetric("auth_success", authSuccess, "1", "gauge", "asInt"));
+      metrics.push(createMetric("auth_failure", authFailure, "1", "gauge", "asInt"));
 
-  const cpuValue = getCpuUsagePercentage();
-  metrics.push(createMetric("cpu", cpuValue, "%", "gauge", "asDouble"));
+      const cpuValue = getCpuUsagePercentage();
+      metrics.push(createMetric("cpu", cpuValue, "%", "gauge", "asDouble"));
 
-  const memoryValue = getMemoryUsagePercentage();
-  metrics.push(createMetric("memory", memoryValue, "%", "gauge", "asDouble"));
+      const memoryValue = getMemoryUsagePercentage();
+      metrics.push(createMetric("memory", memoryValue, "%", "gauge", "asDouble"));
 
-  metrics.push(...latencyMetrics);
-  latencyMetrics = [];
+      metrics.push(...latencyMetrics);
+      latencyMetrics = [];
 
-  metrics.push(...pizzaLatencyMetrics);
-  pizzaLatencyMetrics = [];
+      metrics.push(...pizzaLatencyMetrics);
+      pizzaLatencyMetrics = [];
 
-  metrics.push(createMetric("pizza_success", pizzaSuccess, "1", "gauge", "asInt"));
-  metrics.push(createMetric("pizza_failure", pizzaFailure, "1", "gauge", "asInt"));
+      metrics.push(createMetric("pizza_success", pizzaSuccess, "1", "gauge", "asInt"));
+      metrics.push(createMetric("pizza_failure", pizzaFailure, "1", "gauge", "asInt"));
 
-  metrics.push(createMetric("revenue", revenue, "1", "sum", "asDouble"));
+      metrics.push(createMetric("revenue", revenue, "1", "sum", "asDouble"));
 
-  sendMetricToGrafana(metrics);
-}, 1000);
+      sendMetricToGrafana(metrics);
+    }, 1000);
+  }
+}
+
+function stopMetricsCollection() {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null; // Reset the ID
+  }
+}
 
 function createMetric(
   metricName,
@@ -195,4 +208,4 @@ function sendMetricToGrafana(metrics) {
     });
 }
 
-module.exports = { requestTracker, setActiveUsers, trackLatency, pizzaPurchase };
+module.exports = { requestTracker, setActiveUsers, trackLatency, pizzaPurchase, startMetricsCollection, stopMetricsCollection };
