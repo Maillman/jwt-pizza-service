@@ -187,7 +187,7 @@ function sendMetricToGrafana(metrics) {
           );
         });
       } else {
-        console.log(`Pushed metrics to Grafana`);
+        // console.log(`Pushed metrics to Grafana`);
       }
     })
     .catch((error) => {
