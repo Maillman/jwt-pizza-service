@@ -208,4 +208,6 @@ function sendMetricToGrafana(metrics) {
     });
 }
 
+startMetricsCollection();
+
 module.exports = { requestTracker, setActiveUsers, trackLatency, pizzaPurchase, startMetricsCollection, stopMetricsCollection };
