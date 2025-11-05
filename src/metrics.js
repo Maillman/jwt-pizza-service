@@ -187,4 +187,4 @@ function sendMetricToGrafana(metrics) {
     });
 }
 
-module.exports = { requestTracker, setActiveUsers, trackLatency };
+module.exports = { requestTracker, setActiveUsers, trackLatency, pizzaPurchase };
