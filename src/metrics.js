@@ -3,6 +3,8 @@ const config = require("./config");
 
 let requests = {};
 let activeUsers = 0;
+let authSuccess = 0;
+let authFailure = 0;
 let latencyMetrics = [];
 
 function getCpuUsagePercentage() {
@@ -37,6 +39,9 @@ function setActiveUsers(req, res, next) {
         // console.log("Active user should increase");
         activeUsers += 1;
       }
+      authSuccess += 1;
+    } else {
+      authFailure += 1;
     }
   });
   // console.log("Active users: ", activeUsers);
@@ -72,12 +77,13 @@ setInterval(() => {
 
   metrics.push(createMetric("active_users", activeUsers, "1", "gauge", "asInt"));
 
+  metrics.push(createMetric("auth_success", authSuccess, "1", "gauge", "asInt"));
+  metrics.push(createMetric("auth_failure", authFailure, "1", "gauge", "asInt"));
+
   const cpuValue = getCpuUsagePercentage();
-  //   console.log(cpuValue);
   metrics.push(createMetric("cpu", cpuValue, "%", "gauge", "asDouble"));
 
   const memoryValue = getMemoryUsagePercentage();
-  //   console.log(memoryValue);
   metrics.push(createMetric("memory", memoryValue, "%", "gauge", "asDouble"));
 
   metrics.push(...latencyMetrics);
