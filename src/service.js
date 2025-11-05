@@ -21,6 +21,7 @@ app.use(metrics.requestTracker);
 
 const apiRouter = express.Router();
 app.use("/api", apiRouter);
+apiRouter.use(metrics.trackLatency);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/user", userRouter);
 apiRouter.use("/order", orderRouter);

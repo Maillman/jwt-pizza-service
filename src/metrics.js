@@ -2,6 +2,7 @@ const os = require("os");
 const config = require("./config");
 
 let requests = {};
+let activeUsers = 0;
 // let latency = 0;
 
 function getCpuUsagePercentage() {
@@ -21,6 +22,35 @@ function getMemoryUsagePercentage() {
 function requestTracker(req, res, next) {
   const endpoint = `[${req.method}] ${req.path}`;
   requests[endpoint] = (requests[endpoint] || 0) + 1;
+  next();
+}
+
+// Middleware to track active users
+function setActiveUsers(req, res, next) {
+  res.on("finish", () => {
+    const statusCode = res.statusCode;
+    if (statusCode >= 200 && statusCode < 300) {
+      if (req.method === "DELETE") {
+        // console.log("Active user should decrease");
+        activeUsers -= 1;
+      } else {
+        // console.log("Active user should increase");
+        activeUsers += 1;
+      }
+    }
+  });
+  // console.log("Active users: ", activeUsers);
+  next();
+}
+
+// Middleware to track latency
+function trackLatency(req, res, next) {
+  const startUnixNano = Date.now() * 1000000;
+  res.on("finish", () => {
+    const endUnixNano = Date.now() * 1000000;
+    const duration = endUnixNano - startUnixNano;
+    // console.log("Duration: ", duration);
+  });
   next();
 }
 
@@ -130,4 +160,4 @@ function sendMetricToGrafana(metrics) {
     });
 }
 
-module.exports = { requestTracker };
+module.exports = { requestTracker, setActiveUsers, trackLatency };
