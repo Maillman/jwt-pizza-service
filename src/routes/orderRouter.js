@@ -4,6 +4,7 @@ const { Role, DB } = require('../database/database.js');
 const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
 const metrics = require("../metrics.js");
+const logger = require("../logger.js");
 
 const orderRouter = express.Router();
 
@@ -81,15 +82,22 @@ orderRouter.post(
     const orderStart = Date.now();
     const orderReq = req.body;
     const order = await DB.addDinerOrder(req.user, orderReq);
+    const jsonOrderBody = JSON.stringify({ diner: { id: req.user.id, name: req.user.name, email: req.user.email }, order });
     const r = await fetch(`${config.factory.url}/api/order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', authorization: `Bearer ${config.factory.apiKey}` },
-      body: JSON.stringify({ diner: { id: req.user.id, name: req.user.name, email: req.user.email }, order }),
+      body: jsonOrderBody,
     });
     const j = await r.json();
     const orderEnd = Date.now();
     const orderLatency = orderEnd - orderStart;
     let revenue = 0;
+    const logData = {
+      statusCode: r.status,
+      reqBody: jsonOrderBody,
+      resBody: JSON.stringify(j),
+    };
+    logger.log(r.ok ? 'info' : 'error', 'factory', logData);
     if (r.ok) {
       revenue = order.items.reduce((orderPrice, item) => orderPrice + item.price, 0);
       res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
