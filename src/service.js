@@ -1,4 +1,6 @@
 const express = require("express");
+const { asyncHandler, StatusCodeError } = require('./endpointHelper.js');
+const { Role } = require('./database/database.js');
 const { authRouter, setAuthUser } = require("./routes/authRouter.js");
 const orderRouter = require("./routes/orderRouter.js");
 const franchiseRouter = require("./routes/franchiseRouter.js");
@@ -21,9 +23,33 @@ app.use((req, res, next) => {
 app.use(metrics.requestTracker);
 app.use(logger.httpLogger);
 
+let enableChaos = false;
+
 const apiRouter = express.Router();
 app.use("/api", apiRouter);
 apiRouter.use(metrics.trackLatency);
+
+apiRouter.put(
+  '/chaos/:state',
+  authRouter.authenticateToken,
+  asyncHandler(async (req, res) => {
+    if (req.user.isRole(Role.Admin)) {
+      enableChaos = req.params.state === 'true';
+    }
+
+    res.json({ chaos: enableChaos });
+  })
+);
+
+apiRouter.use((req, res, next) => {
+  // console.log("This should be happening!!");
+  if (enableChaos && Math.random() < 0.5) {
+    // console.log("This should chaos monkey!!");
+    throw new StatusCodeError('Chaos monkey', 500);
+  }
+  next();
+});
+
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/user", userRouter);
 apiRouter.use("/order", orderRouter);
