@@ -389,7 +389,7 @@ async function createStoreIfNeeded(
   storeId
 ) {
   if (storeId == null) {
-    createdStoreRes = await request(app)
+    let createdStoreRes = await request(app)
       .post(`/api/franchise/${franchiseId}/store`)
       .send(store)
       .set("Authorization", `Bearer ${franchiseeAuthToken}`);
