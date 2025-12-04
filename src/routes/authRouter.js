@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const config = require('../config.js');
+const { StatusCodeError } = require("../endpointHelper.js");
 const { asyncHandler } = require('../endpointHelper.js');
 const { DB, Role } = require('../database/database.js');
 const metrics = require("../metrics.js");
@@ -63,6 +64,10 @@ authRouter.post(
   '/',
   asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
+    let foundUser = await DB.getUser(email);
+    if (foundUser) {
+      return res.status(403).json({ message: 'email already taken' });
+    }
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'name, email, and password are required' });
     }
@@ -77,7 +82,13 @@ authRouter.put(
   '/',
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'email, and password are required' });
+    }
     const user = await DB.getUser(email, password);
+    if(!user) {
+      throw new StatusCodeError("unknown user", 404);
+    }
     const auth = await setAuth(user);
     res.json({ user: user, token: auth });
   })

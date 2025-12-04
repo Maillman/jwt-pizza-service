@@ -97,6 +97,11 @@ userRouter.get(
   "/",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
+    const user = req.user;
+    //Only admin should get list of users
+    if (!user.isRole(Role.Admin)) {
+      return res.status(403).json({ message: "unauthorized" });
+    }
     const [users, more] = await DB.getUsers(
       req.query.page,
       req.query.limit,

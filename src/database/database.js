@@ -90,7 +90,7 @@ class DB {
         !user ||
         (password && !(await bcrypt.compare(password, user.password)))
       ) {
-        throw new StatusCodeError("unknown user", 404);
+        return null;
       }
 
       const roleResult = await this.query(
@@ -265,6 +265,11 @@ class DB {
       const orderId = orderResult.insertId;
       for (const item of order.items) {
         const menuId = await this.getID(connection, "id", item.menuId, "menu");
+        const price = await this.query(connection, "SELECT price FROM menu where id=?", [item.menuId]);
+        const actualPrice = price[0].price;
+        if(item.price !== actualPrice) {
+          throw new StatusCodeError("Price requested does not match menu price", 401);
+        }
         await this.query(
           connection,
           `INSERT INTO orderItem (orderId, menuId, description, price) VALUES (?, ?, ?, ?)`,

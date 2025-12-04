@@ -231,7 +231,7 @@ describe("orderRouter", () => {
     const order = {
       franchiseId: testFranchiseId,
       storeId: testStoreId,
-      items: [{ menuId: 1, description: "Veggie", price: 0.05 }],
+      items: [{ menuId: 1, description: "Veggie", price: 10 }],
     };
 
     const createOrderRes = await request(app)
@@ -333,11 +333,11 @@ describe("userRouter", () => {
   });
 
   test("list-users", async () => {
-    testUserAuthToken = await loginUserIfNeeded(testUser, testUserAuthToken);
+    adminToken = await loginUserIfNeeded(adminUser, adminToken);
 
     const listUsersRes = await request(app)
       .get("/api/user")
-      .set("Authorization", `Bearer ${testUserAuthToken}`);
+      .set("Authorization", `Bearer ${adminToken}`);
     expect(listUsersRes.status).toBe(200);
 
     const listOfUsers = listUsersRes.body.users;
@@ -389,10 +389,11 @@ async function createStoreIfNeeded(
   storeId
 ) {
   if (storeId == null) {
-    await request(app)
+    createdStoreRes = await request(app)
       .post(`/api/franchise/${franchiseId}/store`)
       .send(store)
       .set("Authorization", `Bearer ${franchiseeAuthToken}`);
+    storeId = createdStoreRes.body.id;
   }
   return storeId;
 }
